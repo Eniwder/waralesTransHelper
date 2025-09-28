@@ -1,0 +1,7 @@
+.env
+node_modules
+out
+res
+intermediate
+.vscode
+.DS_Store

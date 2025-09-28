@@ -1,0 +1,8 @@
+{
+  "type": "module",
+  "dependencies": {
+    "dotenv": "^17.2.2",
+    "openai": "^4.68.1",
+    "xml2js": "^0.6.2"
+  }
+}
