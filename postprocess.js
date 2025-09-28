@@ -53,5 +53,5 @@ translatedMap.forEach(({ path, text }) => {
 });
 
 // 翻訳後のオブジェクトをXMLに再構築
-const translatedXml = builder.buildObject(jsonObject);
+const translatedXml = builder.buildObject(jsonObject).replace(/&lt;br\/&gt;/g, '<br/>');
 fs.writeFileSync('out/export_ja.xml', translatedXml, 'utf8');
