@@ -9,30 +9,48 @@ const builder = new xml2js.Builder({ headless: true });
  * @param {string} translatedText - 翻訳済みテキスト
  */
 function setTextByPath(obj, path, translatedText) {
-  const parts = path.split('.');
-  let current = obj;
 
-  for (let i = 0; i < parts.length - 1; i++) {
-    const key = parts[i];
-    if (current[key] === undefined) {
-      console.error(`Path error at key: ${key} in path: ${path}`);
-      return;
+  function findConcatKeyLen(obj, parts) {
+    function helper(len) {
+      if (len > parts.length) return -1;
+      concatKey = parts.slice(0, len).join('.');
+      if (obj[concatKey]) return len;
+      return helper(len + 1);
     }
-    current = current[key];
+    return helper(2);
   }
 
-  const finalKey = parts[parts.length - 1];
-  current[finalKey] = translatedText;
+  const parts = path.split('.');
+  let current = obj;
+  let old = null;
+  let key = '';
+  let concatKey = null;
+
+  for (let i = 0; i < parts.length; i++) {
+    concatKey = null;
+    key = parts[i];
+    if (key === '$') return; // xml2jsの属性オブジェクト
+    if (current[key] === undefined) {
+      const len = findConcatKeyLen(current, parts.slice(i));
+      concatKey = parts.slice(i, i + len).join('.');
+      i += (len - 1);
+      if (len < 0 || current[concatKey] === undefined) {
+        console.error(`Path error at key: ${key} or ${concatKey} in path: ${path},\n at ${JSON.stringify(current, null, 2)}\n\n`);
+        return;
+      }
+    }
+    old = current;
+    current = current[concatKey || key];
+  }
+  old[concatKey || key] = translatedText;
 }
 
 const translatedMap = JSON.parse(fs.readFileSync('intermediate/export_ja_kv.json', 'utf8'));
 const jsonObject = JSON.parse(fs.readFileSync('intermediate/export_en.json', 'utf8'));
-console.log(translatedMap);
 
 translatedMap.forEach(({ path, text }) => {
   setTextByPath(jsonObject, path, text);
 });
-
 
 // 翻訳後のオブジェクトをXMLに再構築
 const translatedXml = builder.buildObject(jsonObject);

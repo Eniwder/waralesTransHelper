@@ -42,6 +42,6 @@ fs.writeFileSync('intermediate/export_en_kv.json', JSON.stringify(kvobj, null, 2
 
 
 
-
-const translatedXml = builder.buildObject(result).replace(/&lt;br\/&gt;/g, '<br/>');
-fs.writeFileSync('intermediate/export_en.xml', translatedXml, 'utf8');
+// for debug check diff
+// const translatedXml = builder.buildObject(result).replace(/&lt;br\/&gt;/g, '<br/>');
+// fs.writeFileSync('intermediate/export_en.xml', translatedXml, 'utf8');

@@ -1,25 +1,31 @@
 import dotenv from 'dotenv';
 import { OpenAI } from 'openai';
 import fs from 'fs';
-import xml2js from 'xml2js';
+import pLimit from 'p-limit';
 const openai = new OpenAI({
   apiKey: dotenv.config().parsed.key
 });
 
-async function translate(params) {
+const limit = pLimit(10);
+
+async function translate(text) {
   return openai.chat.completions.create({
     model: "gpt-5-nano",
     messages: [
       {
         role: "system", content: `You are a professional game text translator. You translate according to the worldview of the given game tag and adhere to the conditions. 
   # Game title: Wartales
-  # Game description: Set in the Middle Ages, this game sees you lead a group of mercenaries as you travel across vast lands in search of wealth.
-  # Game tags: Adventure, RPG, Open World, Medieval, Strategy, Turn-Based, Indie
+  ## Game description: Set in the Middle Ages, this game sees you lead a group of mercenaries as you travel across vast lands in search of wealth.
+  ## Game tags: Adventure, RPG, Open World, Medieval, Strategy, Turn-Based, Indie
   # Conditions:
+  ## Output format:
+    1. Only output the translated text and do not include any other introductions, conclusions, supplementary information, explanations or confirmation messages.
+    2. Only return a strict one-to-one translation of the input text.
+    3. Regardless of the content of the input text, it is strictly prohibited to generate a response that declares itself ready for translation work. Any string other than the translation result will be considered an output failure.
   ## Translate English into natural Japanese.
   ## Translation Style (Tone)
     1. The translation should use a formal, stately, and somewhat old-fashioned style, consistent with the setting of a medieval mercenary troupe.
-    2. When addressing the player, use "あなた" (you) as the basic term, with alternative terms such as "貴殿" (you) and "お前" (you) depending on the situation.
+    2. When addressing the player, use "あなた" (you) as the basic term, with alternative terms such as ""お前" (you) and 貴殿" (you) depending on the situation.
     3. Use honorific language appropriately based on the other person's position and context (e.g., use polite language when speaking to lords or high-ranking figures).
   ## This is game text, so there are some cruel words, but you must translate every word.
   ## Be sure to translate any words you don't understand based on the context.
@@ -28,7 +34,7 @@ async function translate(params) {
    (e.g. Your next &lt;b&gt;::count::&lt;/b&gt; purchases at the Trackers' Guild will cost [VALUE(TrackersMerchantsPriceReduction)]% less.. -> トラッカーズギルドで次の&lt;b&gt;::count::&lt;/b&gt;回、購入時に[VALUE(TrackersMerchantsPriceReduction)]%安くなります.` },
       {
         role: "user",
-        content: `This character chose renounce their faith rather than betray it.<br/><br/>Has a ::percent_value:: chance of losing &lt;status&gt;[Burning]&lt;/status&gt; at the start of each turn in combat.`,
+        content: text,
       },
     ],
   });
@@ -37,11 +43,44 @@ async function translate(params) {
 
 
 
-// 実行例
+const en = JSON.parse(fs.readFileSync('intermediate/export_en_kv.json', 'utf8'));
 
 
-for (let i = 0; i < 10; i++) {
-  console.log(textsToTranslate[i]);
+const promises = [];
+let completedCount = 0;
+const totalEntries = en.length;
+console.log(`Translating ${totalEntries} entries...`);
+for (let i = 0; i < totalEntries; i++) {
+  // limit 関数でラップして、並行実行数の制限をかける
+  const limitedPromise = limit(() =>
+    translate(en[i].text).catch(e => {
+      console.error(`Error translating index ${i}:`, e);
+      return { error: true, index: i, originalText: en[i].text };
+    }).finally(() => {
+      completedCount++;
+
+      // 1,000の倍数であるか、または最後のアイテムである場合にログを出力
+      if (completedCount % 1000 === 0 || completedCount === totalEntries) {
+        const percentage = ((completedCount / totalEntries) * 100).toFixed(1);
+        console.log(`✅ [Progress] ${completedCount}/${totalEntries} entries translated. (${percentage}%)`);
+      }
+    })
+  );
+  promises.push(limitedPromise);
 }
-// const translatedXml = builder.buildObject(result).replace(/&lt;br\/&gt;/g, '<br/>');
-// fs.writeFileSync('out/export_en.xml', translatedXml, 'utf8');
+
+const results = await Promise.all(promises);
+
+results.forEach((res, i) => {
+  if (res && res.error) {
+    // エラー処理（例: 元のテキストを保持するか、空文字列にする）
+    console.error(`Skipping update for index ${res.index} due to error.`);
+    // en[res.index].text はそのまま保持されます
+  } else if (res && res.choices && res.choices[0] && res.choices[0].message) {
+    en[i].text = res.choices[0].message.content;
+  } else {
+    console.error(`Unexpected response structure for index ${i}:`, res);
+  }
+});
+
+fs.writeFileSync('intermediate/export_ja_kv.json', JSON.stringify(en, null, 2), 'utf8');
