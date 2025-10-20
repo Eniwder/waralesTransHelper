@@ -1,14 +1,17 @@
 import dotenv from 'dotenv';
 import { OpenAI } from 'openai';
-
+import fs from 'fs';
+import pLimit from 'p-limit';
+import { exit } from 'process';
 const openai = new OpenAI({
   apiKey: dotenv.config().parsed.key
 });
 
-async function translate(params) {
-  const completion = await openai.chat.completions.create({
+const limit = pLimit(10);
+
+async function translate(text) {
+  return openai.chat.completions.create({
     model: "gpt-5-nano",
-    // temperature: 0,
     messages: [
       {
         role: "system", content: `You are a professional game text translator. You translate according to the worldview of the given game tag and adhere to the conditions. 
@@ -33,12 +36,57 @@ async function translate(params) {
    (e.g. Use the District Slot icon to build your [FiefPlace_Throne]. This will be the &lt;b&gt;main building&lt;/b&gt; in your first district: the Dungeon District. -> 地区スロットのアイコンを用いて、あなたの[FiefPlace_Throne]を建設せよ。これがあなたの最初の地区、ダンジョン地区における&lt;b&gt;本部&lt;/b&gt;になります。` },
       {
         role: "user",
-        content: `The <b>Tavern</b> can generate profits during each Rest. The troop manages its menu, staff, layout and progress.`,
+        content: text,
       },
     ],
   });
-
-  console.log(completion.choices[0].message);
 }
 
-await translate();
+
+
+const en = JSON.parse(fs.readFileSync('intermediate/export_en_kv.json', 'utf8'));
+const ja = JSON.parse(fs.readFileSync('intermediate/export_ja_kv2.json', 'utf8'));
+
+const untranslated = ja.filter(text => text.text.match(/<b>[a-zA-Z ]+/));
+const origin = en.filter(en => untranslated.some(_ => _.path === en.path));
+console.log(`Untranslated count: ${untranslated.length} {should be ${origin.length}}`);
+
+
+const promises = [];
+let completedCount = 0;
+const totalEntries = origin.length;
+console.log(`Translating ${totalEntries} entries...`);
+for (let i = 0; i < totalEntries; i++) {
+  // limit 関数でラップして、並行実行数の制限をかける
+  const limitedPromise = limit(() =>
+    translate(origin[i].text).catch(e => {
+      console.error(`Error translating index ${i}:`, e);
+      return { error: true, index: i, originalText: origin[i].text };
+    }).finally(() => {
+      completedCount++;
+
+      // 1,000の倍数であるか、または最後のアイテムである場合にログを出力
+      if (completedCount % 1000 === 0 || completedCount === totalEntries) {
+        const percentage = ((completedCount / totalEntries) * 100).toFixed(1);
+        console.log(`✅ [Progress] ${completedCount}/${totalEntries} entries translated. (${percentage}%)`);
+      }
+    })
+  );
+  promises.push(limitedPromise);
+}
+
+const results = await Promise.all(promises);
+
+results.forEach((res, i) => {
+  if (res && res.error) {
+    // エラー処理（例: 元のテキストを保持するか、空文字列にする）
+    console.error(`Skipping update for index ${res.index} due to error.`);
+    // en[res.index].text はそのまま保持されます
+  } else if (res && res.choices && res.choices[0] && res.choices[0].message) {
+    origin[i].text = res.choices[0].message.content;
+  } else {
+    console.error(`Unexpected response structure for index ${i}:`, res);
+  }
+});
+
+fs.writeFileSync('intermediate/export_ja_kv3.json', JSON.stringify(origin, null, 2), 'utf8');

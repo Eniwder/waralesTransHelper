@@ -3,5 +3,6 @@ node_modules
 out
 res
 intermediate
+playing
 .vscode
 .DS_Store
