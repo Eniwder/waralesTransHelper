@@ -31,9 +31,9 @@ async function translate(text) {
   ## This is game text, so there are some cruel words, but you must translate every word.
   ## Be sure to translate any words you don't understand based on the context.
   ## Use katakana for proper nouns.
-  ## Except for those enclosed in <b> and </b>, Do not translate anything enclosed in control symbol such as [], &lt;&gt;, ::, <>.
-  ## Must Translate enclosed in <b> and </b>
-   (e.g. Use the District Slot icon to build your [FiefPlace_Throne]. This will be the &lt;b&gt;main building&lt;/b&gt; in your first district: the Dungeon District. -> 地区スロットのアイコンを用いて、あなたの[FiefPlace_Throne]を建設せよ。これがあなたの最初の地区、ダンジョン地区における&lt;b&gt;本部&lt;/b&gt;になります。` },
+  ## Except for those enclosed in <i> and </i>, Do not translate anything enclosed in control symbol such as [], &lt;&gt;, ::, <>.
+  ## Must Translate enclosed in <i> and </i>
+   (e.g. Use the District Slot icon to build your [FiefPlace_Throne]. This will be the &lt;i&gt;main building&lt;/i&gt; in your first district: the Dungeon District. -> 地区スロットのアイコンを用いて、あなたの[FiefPlace_Throne]を建設せよ。これがあなたの最初の地区、ダンジョン地区における&lt;i&gt;本部&lt;/i&gt;になります。` },
       {
         role: "user",
         content: text,
@@ -45,12 +45,12 @@ async function translate(text) {
 
 
 const en = JSON.parse(fs.readFileSync('intermediate/export_en_kv.json', 'utf8'));
-const ja = JSON.parse(fs.readFileSync('intermediate/export_ja_kv2.json', 'utf8'));
+const ja = JSON.parse(fs.readFileSync('intermediate/export_ja_kv.json', 'utf8'));
 
-const untranslated = ja.filter(text => text.text.match(/<b>[a-zA-Z ]+/));
+const untranslated = ja.filter(text => text.text.match(/<i>[a-zA-Z ]+/));
 const origin = en.filter(en => untranslated.some(_ => _.path === en.path));
 console.log(`Untranslated count: ${untranslated.length} {should be ${origin.length}}`);
-
+// exit();
 
 const promises = [];
 let completedCount = 0;
@@ -89,4 +89,4 @@ results.forEach((res, i) => {
   }
 });
 
-fs.writeFileSync('intermediate/export_ja_kv3.json', JSON.stringify(origin, null, 2), 'utf8');
+fs.writeFileSync('intermediate/export_ja_kv2.json', JSON.stringify(origin, null, 2), 'utf8');

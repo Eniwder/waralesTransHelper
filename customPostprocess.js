@@ -45,10 +45,10 @@ function setTextByPath(obj, path, translatedText) {
   old[concatKey || key] = translatedText;
 }
 
-const translatedMap = JSON.parse(fs.readFileSync('intermediate/export_ja_kv3.json', 'utf8'));
+const translatedMap1 = JSON.parse(fs.readFileSync('intermediate/export_ja_kv_rep.json', 'utf8'));
 const jsonObject = JSON.parse(fs.readFileSync('intermediate/export_ja.json', 'utf8'));
 
-translatedMap.forEach(({ path, text }) => {
+translatedMap1.forEach(({ path, text }) => {
   setTextByPath(jsonObject, path, text);
 });
 
