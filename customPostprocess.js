@@ -45,7 +45,7 @@ function setTextByPath(obj, path, translatedText) {
   old[concatKey || key] = translatedText;
 }
 
-const translatedMap1 = JSON.parse(fs.readFileSync('intermediate/export_ja_kv_rep.json', 'utf8'));
+const translatedMap1 = JSON.parse(fs.readFileSync('intermediate/export_ja_kv4.json', 'utf8'));
 const jsonObject = JSON.parse(fs.readFileSync('intermediate/export_ja.json', 'utf8'));
 
 translatedMap1.forEach(({ path, text }) => {
@@ -54,4 +54,4 @@ translatedMap1.forEach(({ path, text }) => {
 
 // 翻訳後のオブジェクトをXMLに再構築
 const translatedXml = builder.buildObject(jsonObject).replace(/&lt;br\/&gt;/g, '<br/>');
-fs.writeFileSync('out/export_ja2.xml', translatedXml, 'utf8');
+fs.writeFileSync('out/export_ja3.xml', translatedXml, 'utf8');

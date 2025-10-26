@@ -34,7 +34,7 @@ function extractTexts(obj, currentPath = 'cdb.sheet', collection = []) {
 }
 
 
-const xmlData = fs.readFileSync('playing/export_zh3.xml', 'utf8').replace(/<br ?\/>/g, '&lt;br/&gt;');
+const xmlData = fs.readFileSync('playing/export_zh4.xml', 'utf8').replace(/<br ?\/>/g, '&lt;br/&gt;');
 const result = await parser.parseStringPromise(xmlData);
 fs.writeFileSync('intermediate/export_ja.json', JSON.stringify(result, null, 2), 'utf8');
 const kvobj = extractTexts(result.cdb.sheet);
